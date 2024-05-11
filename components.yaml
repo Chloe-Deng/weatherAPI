@@ -1,0 +1,255 @@
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    WeatherData:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+          example: '2022-05-07T02:14:09.000Z'
+        _id:
+          type: string
+        humidity:
+          type: number
+          example: 70
+        latitude:
+          type: number
+          example: 152.77891
+        atmosphericPressure:
+          type: number
+          example: 128.08
+        deviceName:
+          type: string
+          example: Woodford_Sensor
+        longitude:
+          type: number
+          example: -26.95064
+        maxWindSpeed:
+          type: number
+          example: 5.16
+        solarRadiation:
+          type: number
+          example: 600.22
+        temperature:
+          type: number
+          example: 23.4
+        time:
+          type: string
+          format: date-time
+          example: '2022-05-07T02:14:09.000Z'
+        vaporPressure:
+          type: number
+          example: 1.76
+        windDirection:
+          type: number
+          example: 149.36
+        precipitation:
+          type: number
+          example: 0.085
+    NewWeatherData:
+      type: object
+      properties:
+        humidity:
+          type: integer
+          example: 70
+        latitude:
+          type: number
+          example: 152.77891
+        atmosphericPressure:
+          type: number
+          example: 128.08
+        deviceName:
+          type: string
+          example: Woodford_Sensor
+        longitude:
+          type: number
+          example: -26.95064
+        maxWindSpeed:
+          type: number
+          example: 5.16
+        solarRadiation:
+          type: number
+          example: 600.22
+        temperature:
+          type: number
+          example: 23.4
+        time:
+          type: string
+          format: date-time
+          example: '2022-05-07T02:14:09.000Z'
+        vaporPressure:
+          type: number
+          example: 1.76
+        windDirection:
+          type: number
+          example: 149.36
+        precipitation:
+          type: number
+          example: 0.085
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 66052e5c89bb66798c905c16
+        name:
+          type: string
+          format: text
+          example: Rachel
+        email:
+          type: string
+          format: email
+          example: teacher1@email.com
+        password:
+          type: string
+          format: password
+          example: pass1234
+        passwordConfirmed:
+          type: string
+          format: password
+          example: pass1234
+        role:
+          type: string
+          enum:
+            - teacher
+            - user
+            - sensor
+        __v:
+          type: integer
+          example: 0
+    NewUser:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: newUser@example.com
+        password:
+          type: string
+          format: password
+          example: pass1234
+        role:
+          type: string
+          enum:
+            - teacher
+            - user
+            - sensor
+  requestBodies:
+    NewUser:
+      description: Information needed to sign up a new user
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NewUser'
+  responses:
+    200_UserObject:
+      description: Successful response with user object
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: 'Successful response with user object'
+              user:
+                $ref: '#/components/schemas/User'
+    400_InvalidRequest:
+      description: Invalid Request, e.g., missing required fields or invalid data format
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+                example: 400
+              message:
+                type: string
+                example: 'Invalid request parameters'
+    401_Unauthorized:
+      description: Unauthorized, user is not logged in.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: fail
+              error:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 401
+                  status:
+                    type: string
+                    example: fail
+                  isOperational:
+                    type: boolean
+                    example: true
+              message:
+                type: string
+                example: 'You are not logged in! Please log in to get access.'
+    403_ForbiddenError:
+      description: Forbidden, the user role does not have permission.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+                example: 403
+              message:
+                type: string
+                example: 'You do not have permission to perform this action.'
+    500_DatabaseError:
+      description: Database error, e.g., failed operation or connectivity issues
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+                example: 500
+              message:
+                type: string
+                example: 'Database error occurred'
+    404_BadRequest:
+      description: Weather data not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: number
+                example: 404
+              message:
+                type: string
+                example: Weather data not found
+    404_BadRequest_User:
+      description: User data not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: number
+                example: 404
+              message:
+                type: string
+                example: User data not found
