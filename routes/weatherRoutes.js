@@ -55,7 +55,7 @@ const router = express.Router();
  *                   example: 400
  *                 message:
  *                   type: string
- *                   example: "Invalid sensor name or query parameters."
+ *                   example: "Invalid sensor name format."
  *       401:
  *         description: Unauthorized access, token missing or invalid
  *         content:
@@ -69,6 +69,8 @@ const router = express.Router();
  *                 message:
  *                   type: string
  *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
  *         description: Sensor not found or no precipitation data available for the specified sensor
  *         content:
@@ -82,6 +84,19 @@ const router = express.Router();
  *                 message:
  *                   type: string
  *                   example: "No precipitation record found for the specified sensor in the last five months."
+ *       500:
+ *         description: A server error occurred processing the request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error."
  */
 router
   .route('/max-precipitation/:sensorName')
@@ -95,7 +110,7 @@ router
  * @openapi
  * /api/v1/weather/max-temp:
  *   get:
- *     summary: Retrieve the highest temperature records within a specified date range
+ *     summary: Retrieve the highest temperature records within a specified date range of all weather stations
  *     tags: [Weather Readings]
  *     security:
  *       - BearerAuth: []
@@ -129,19 +144,40 @@ router
  *                   example: success
  *                 data:
  *                   type: array
+ *                   minItems: 3
+ *                   maxItems: 3
  *                   items:
  *                     type: object
  *                     properties:
  *                       time:
  *                         type: string
  *                         format: date-time
- *                         example: '2020-11-29T05:07:52.000Z'
  *                       sensorName:
  *                         type: string
- *                         example: 'Noosa_Sensor'
  *                       temperature:
  *                         type: number
- *                         example: 37.17
+ *             examples:  # Examples for the whole response object
+ *               example1:
+ *                 value:
+ *                   status: "success"
+ *                   data: [
+ *                     {
+ *                       time: '2020-11-29T05:07:52.000Z',
+ *                       sensorName: 'Noosa_Sensor',
+ *                       temperature: 37.17
+ *                     },
+ *                     {
+ *                       time: '2020-11-30T08:22:00.000Z',
+ *                       sensorName: 'Woodford_Sensor',
+ *                       temperature: 36.89
+ *                     },
+ *                     {
+ *                       time: '2020-12-01T12:15:30.000Z',
+ *                       sensorName: 'Yandina_Sensor',
+ *                       temperature: 38.45
+ *                     }
+ *                   ]
+ *
  *       400:
  *         description: Bad request due to invalid parameters
  *         content:
@@ -168,6 +204,8 @@ router
  *                 message:
  *                   type: string
  *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
  *         description: No temperature records found for the specified date range
  *         content:
@@ -193,7 +231,7 @@ router
  *                   example: 500
  *                 message:
  *                   type: string
- *                   example: "An unexpected error occurred."
+ *                   example: "Error occurred while querying for maximum temperature."
  */
 router
   .route('/max-temp')
@@ -268,7 +306,7 @@ router
  *                   example: 400
  *                 message:
  *                   type: string
- *                   example: "Bad request due to invalid parameters"
+ *                   example: "Invalid date format for startDate or endDate."
  *       401:
  *         description: Unauthorized access, token missing or invalid
  *         content:
@@ -282,6 +320,8 @@ router
  *                 message:
  *                   type: string
  *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
  *         description: Sensor name not found or no data for the given date
  *         content:
@@ -295,6 +335,19 @@ router
  *                 message:
  *                   type: string
  *                   example: "Sensor name not found or no data for the given date"
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "Error processing request"
  */
 router
   .route('/weather-stats/:sensorName')
@@ -355,10 +408,25 @@ router
  *               properties:
  *                 status:
  *                   type: string
- *                   example: failure
+ *                   example: fail
  *                 message:
  *                   type: string
- *                   example: Invalid data format or missing required
+ *                   example: "Validation error: Precipitation cannot be negative."
+ *       401:
+ *         description: Unauthorized access, token missing or invalid login credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
  *         description: Weather data not found
  *         content:
@@ -387,17 +455,19 @@ router
  *                   example: "Error processing request"
  */
 
-router.route('/update-precipitation/:id').patch(
-  authController.protect,
-  authController.restrictTo('teacher'), // 或者其他适当的角色
-  weatherController.updatePrecipitation
-);
+router
+  .route('/update-precipitation/:id')
+  .patch(
+    authController.protect,
+    authController.restrictTo('teacher'),
+    weatherController.updatePrecipitation
+  );
 
 /**
  * @openapi
  * /api/v1/weather/weather:
  *   get:
- *     summary: Get all weather data (Teacher and user only)
+ *     summary: Get all weather data (Teacher and student only)
  *     tags: [Weather Readings]
  *     security:
  *       - BearerAuth: []
@@ -422,6 +492,24 @@ router.route('/update-precipitation/:id').patch(
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/WeatherData'
+ *
+ *       401:
+ *         description: Unauthorized access, token missing or invalid login credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
+ *       404:
+ *         $ref: '#/components/responses/404_BadRequest'
  *       500:
  *         description: Database error
  *         content:
@@ -461,13 +549,41 @@ router.route('/update-precipitation/:id').patch(
  *               type: object
  *               properties:
  *                 status:
- *                   type: number
- *                   example: 201
+ *                   type: string
+ *                   example: success
  *                 message:
  *                   type: string
  *                   example: Weather data successfully created
  *                 weather:
  *                   $ref: "#/components/schemas/NewWeatherData"
+ *       400:
+ *         description: Bad request due to invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Validation error: Atmospheric pressure cannot be negative"
+ *       401:
+ *         description: Unauthorized access, token missing or invalid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       500:
  *         description: Database error
  *         content:
@@ -492,7 +608,6 @@ router.route('/update-precipitation/:id').patch(
  *   post:
  *     summary: Insert multiple weather readings (Teacher and Sensor only)
  *     tags: [Weather Readings]
- *
  *     requestBody:
  *       required: true
  *       content:
@@ -501,8 +616,33 @@ router.route('/update-precipitation/:id').patch(
  *             type: array
  *             items:
  *               $ref: '#/components/schemas/NewWeatherData'
+ *             example:
+ *               - humidity: 70
+ *                 latitude: 152.77891
+ *                 atmosphericPressure: 128.08
+ *                 deviceName: "Woodford_Sensor"
+ *                 longitude: -26.95064
+ *                 maxWindSpeed: 5.16
+ *                 solarRadiation: 600.22
+ *                 temperature: 23.4
+ *                 time: "2022-05-07T02:14:09.000Z"
+ *                 vaporPressure: 1.76
+ *                 windDirection: 149.36
+ *                 precipitation: 0.085
+ *               - humidity: 65
+ *                 latitude: 152.77991
+ *                 atmosphericPressure: 130.08
+ *                 deviceName: "Everton_Sensor"
+ *                 longitude: -26.95164
+ *                 maxWindSpeed: 4.56
+ *                 solarRadiation: 620.12
+ *                 temperature: 24.1
+ *                 time: "2022-05-07T03:14:09.000Z"
+ *                 vaporPressure: 1.80
+ *                 windDirection: 148.56
+ *                 precipitation: 0.095
  *     responses:
- *       200:
+ *       201:
  *         description: Successfully added multiple weather readings
  *         content:
  *           application/json:
@@ -512,6 +652,9 @@ router.route('/update-precipitation/:id').patch(
  *                 status:
  *                   type: string
  *                   example: success
+ *                 records:
+ *                   type: number
+ *                   example: 2
  *                 data:
  *                   type: object
  *                   properties:
@@ -519,19 +662,59 @@ router.route('/update-precipitation/:id').patch(
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/WeatherData'
+ *                       example:
+ *                         - humidity: 70
+ *                           latitude: 152.77891
+ *                           atmosphericPressure: 128.08
+ *                           deviceName: "Woodford_Sensor"
+ *                           longitude: -26.95064
+ *                           maxWindSpeed: 5.16
+ *                           solarRadiation: 600.22
+ *                           temperature: 23.4
+ *                           time: "2022-05-07T02:14:09.000Z"
+ *                           vaporPressure: 1.76
+ *                           windDirection: 149.36
+ *                           precipitation: 0.085
+ *                         - humidity: 65
+ *                           latitude: 152.77991
+ *                           atmosphericPressure: 130.08
+ *                           deviceName: "Everton_Sensor"
+ *                           longitude: -26.95164
+ *                           maxWindSpeed: 4.56
+ *                           solarRadiation: 620.12
+ *                           temperature: 24.1
+ *                           time: "2022-05-07T03:14:09.000Z"
+ *                           vaporPressure: 1.80
+ *                           windDirection: 148.56
+ *                           precipitation: 0.095
  *       400:
- *         description: Bad Request - Invalid input data
+ *         description: Bad request due to invalid input data
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: failure
+ *                   type: integer
+ *                   example: 400
  *                 message:
  *                   type: string
- *                   example: Invalid data format or missing required fields
+ *                   example: "Validation error: Atmospheric pressure cannot be negative"
+ *       401:
+ *         description: Unauthorized access, token missing or invalid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -540,8 +723,8 @@ router.route('/update-precipitation/:id').patch(
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: failure
+ *                   type: integer
+ *                   example: 500
  *                 message:
  *                   type: string
  *                   example: Unable to process request due to server error
@@ -550,57 +733,9 @@ router.route('/update-precipitation/:id').patch(
 /**
  * @openapi
  * /api/v1/weather/{id}:
- *   get:
- *     summary: Get weather data by ID (Teacher and User only)
- *     tags: [Weather Readings]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Unique ID of the weather data
- *     responses:
- *       200:
- *         description: Weather data retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/WeatherData'
- *       404:
- *         description: Weather data not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: number
- *                 message:
- *                   type: string
- *             example:
- *               status: 404
- *               message: Weather data not found
- *       500:
- *         description: Database error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: number
- *                 message:
- *                   type: string
- *             example:
- *               status: 500
- *               message: Error processing request
- *
  *   patch:
  *     summary: Update weather data by ID (Teacher only)
- *     tags: [WeatherData]
+ *     tags: [Weather Readings]
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -632,6 +767,7 @@ router.route('/update-precipitation/:id').patch(
  *                   example: Weather data updated successfully
  *                 weather:
  *                   $ref: '#/components/schemas/NewWeatherData'
+ *
  *       404:
  *         description: Weather data not found
  *         content:
@@ -645,7 +781,35 @@ router.route('/update-precipitation/:id').patch(
  *                   type: string
  *             example:
  *               status: 404
- *               message: Weather data not found
+ *               message: Fail to update, no weather data found with that ID.
+ *       400:
+ *         description: Bad request due to invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Validation error: Atmospheric pressure cannot be negative"
+ *       401:
+ *         description: Unauthorized access, token missing or invalid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       500:
  *         description: Database error
  *         content:
@@ -676,6 +840,10 @@ router.route('/update-precipitation/:id').patch(
  *     responses:
  *       204:
  *         description: Weather data deleted successfully
+ *       401:
+ *         $ref: '#/components/responses/401_Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
  *         description: Weather data not found
  *         content:
@@ -729,11 +897,6 @@ router
 
 router
   .route('/:id')
-  .get(
-    authController.protect,
-    authController.restrictTo('teacher', 'student'),
-    weatherController.getWeather
-  )
   .patch(
     authController.protect,
     authController.restrictTo('teacher'),

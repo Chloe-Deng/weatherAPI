@@ -64,8 +64,21 @@ const router = express.Router();
  *                   properties:
  *                     user:
  *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: "Validation error: Please tell us your name!"
  *       500:
- *         description: Internal Server Error or E11000 duplicate key error for email.
+ *         description: Internal Server Error
  *         content:
  *           application/json:
  *             schema:
@@ -74,42 +87,9 @@ const router = express.Router();
  *                 status:
  *                   type: string
  *                   example: error
- *                 error:
- *                   type: object
- *                   properties:
- *                     driver:
- *                       type: boolean
- *                       example: true
- *                     name:
- *                       type: string
- *                       example: "MongoError"
- *                     index:
- *                       type: integer
- *                       example: 0
- *                     code:
- *                       type: integer
- *                       example: 11000
- *                     keyPattern:
- *                       type: object
- *                       properties:
- *                         email:
- *                           type: integer
- *                           example: 1
- *                     keyValue:
- *                       type: object
- *                       properties:
- *                         email:
- *                           type: string
- *                           example: "teacher2@email.com"
- *                     statusCode:
- *                       type: integer
- *                       example: 500
- *                     status:
- *                       type: string
- *                       example: error
  *                 message:
  *                   type: string
- *                   example: "E11000 duplicate key error collection: weather-data-raw.users index: email_1 dup key: { email: \"teacher2@email.com\" }"
+ *                   example: "An error occurred while processing the request."
  */
 router.post('/signup', authController.signup);
 
@@ -153,7 +133,7 @@ router.post('/signup', authController.signup);
  *                   type: string
  *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       400:
- *         description: Unauthorized, possibly due to missing or invalid credentials.
+ *         description: Unauthenticated, possibly due to missing or invalid credentials.
  *         content:
  *           application/json:
  *             schema:
@@ -180,7 +160,43 @@ router.post('/signup', authController.signup);
  *                   example: "An error occurred while processing the request."
  */
 router.post('/login', authController.login);
-router.patch('/updateMe', authController.protect, userController.updateMe);
+
+/**
+ * @openapi
+ * /api/v1/users/logout:
+ *   post:
+ *     summary: Log out a user by clearing the JWT from the cookies
+ *     tags:
+ *       - Auth
+ *     responses:
+ *       200:
+ *         description: Logout successful, JWT cleared from cookies.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Logged out"
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: "An error occurred while processing the request."
+ */
+router.get('/logout', authController.logout);
 
 /**
  * @openapi
@@ -265,11 +281,25 @@ router.patch('/updateMe', authController.protect, userController.updateMe);
  *                           type: integer
  *                           example: 0
  *       400:
- *         $ref: '#/components/responses/400_InvalidRequest'
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: "Validation error: Please tell us your name!"
  *       401:
  *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
+ *       500:
+ *         $ref: '#/components/responses/500_Error'
+ *
  */
 router.post(
   '/create-user',
@@ -332,6 +362,8 @@ router.post(
  *                 message:
  *                   type: string
  *                   example: "Unauthorized access, token missing or invalid."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
  *         description: No users found with the specified role and date range
  *         content:
@@ -345,6 +377,8 @@ router.post(
  *                 message:
  *                   type: string
  *                   example: "No users found with 'Student' role and last login dates within the specified range."
+ *       500:
+ *         $ref: '#/components/responses/500_Error'
  */
 router
   .route('/last-login')
@@ -404,8 +438,10 @@ router
  *         $ref: '#/components/responses/400_InvalidRequest'
  *       401:
  *         $ref: '#/components/responses/401_Unauthorized'
- *       404:
- *          $ref: '#/components/responses/403_ForbiddenError'
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
+ *       500:
+ *         $ref: '#/components/responses/500_Error'
  */
 
 router
@@ -450,10 +486,25 @@ router.use(authController.restrictTo('teacher'));
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/User'
+ *       401:
+ *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "Can't find /api/v/weather?page=5&limit=20 on this server."
  *       500:
- *         $ref: '#/components/responses/500_DatabaseError'
+ *         $ref: '#/components/responses/500_Error'
  */
 
 router.route('/').get(userController.getAllUsers);
@@ -476,10 +527,25 @@ router.route('/').get(userController.getAllUsers);
  *     responses:
  *       200:
  *         $ref: "#/components/responses/200_UserObject"
+ *       401:
+ *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "No user found for this ID."
  *       500:
- *         $ref: '#/components/responses/500_DatabaseError'
+ *         $ref: '#/components/responses/500_Error'
  */
 
 /**
@@ -528,6 +594,19 @@ router.route('/').get(userController.getAllUsers);
  *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "No user found for this ID."
  *       500:
  *         description: An internal server error occurred.
  */
@@ -557,16 +636,14 @@ router.route('/').get(userController.getAllUsers);
  *         $ref: '#/components/responses/401_Unauthorized'
  *       404:
  *         $ref: '#/components/responses/404_BadRequest_User'
- * components:
- *   securitySchemes:
- *     BearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
+ *       500:
+ *         $ref: '#/components/responses/500_Error'
+
  */
 router
   .route('/:id')
-  .get(userController.getUser)
   .patch(userController.updateUser)
   .delete(userController.deleteUser);
 

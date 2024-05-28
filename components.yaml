@@ -156,8 +156,8 @@ components:
             type: object
             properties:
               status:
-                type: integer
-                example: 200
+                type: string
+                example: success
               message:
                 type: string
                 example: 'Successful response with user object'
@@ -171,8 +171,8 @@ components:
             type: object
             properties:
               status:
-                type: integer
-                example: 400
+                type: string
+                example: fail
               message:
                 type: string
                 example: 'Invalid request parameters'
@@ -186,18 +186,6 @@ components:
               status:
                 type: string
                 example: fail
-              error:
-                type: object
-                properties:
-                  statusCode:
-                    type: integer
-                    example: 401
-                  status:
-                    type: string
-                    example: fail
-                  isOperational:
-                    type: boolean
-                    example: true
               message:
                 type: string
                 example: 'You are not logged in! Please log in to get access.'
@@ -209,24 +197,24 @@ components:
             type: object
             properties:
               status:
-                type: integer
-                example: 403
+                type: string
+                example: fail
               message:
                 type: string
                 example: 'You do not have permission to perform this action.'
-    500_DatabaseError:
-      description: Database error, e.g., failed operation or connectivity issues
+    500_Error:
+      description: Server error, e.g., failed operation or connectivity issues
       content:
         application/json:
           schema:
             type: object
             properties:
               status:
-                type: integer
-                example: 500
+                type: string
+                example: error
               message:
                 type: string
-                example: 'Database error occurred'
+                example: 'Internal server error occurred!'
     404_BadRequest:
       description: Weather data not found
       content:
@@ -235,8 +223,8 @@ components:
             type: object
             properties:
               status:
-                type: number
-                example: 404
+                type: string
+                example: fail
               message:
                 type: string
                 example: Weather data not found
@@ -248,8 +236,8 @@ components:
             type: object
             properties:
               status:
-                type: number
-                example: 404
+                type: string
+                example: fail
               message:
                 type: string
                 example: User data not found

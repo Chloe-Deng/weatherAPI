@@ -40,33 +40,6 @@ exports.getAllWeather = async (req, res) => {
 };
 
 /**
- * GET /weather/id
- *
- * Get a single weather data by ID
- *
- * @param {Request} req - Express request object
- * @param {Response} res - Express request object
- */
-exports.getWeather = async (req, res) => {
-  try {
-    const id = req.params.id.trim();
-    const weather = await Weather.findById(id);
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        weather,
-      },
-    });
-  } catch (err) {
-    res.status(404).json({
-      status: 'fail',
-      message: `No matched ID with that weather data. Invalid ${err.path}: ${err.value}`,
-    });
-  }
-};
-
-/**
  * POST /weather
  *
  * Insert a new weather reading
@@ -85,9 +58,16 @@ exports.createWeather = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(400).json({
-      status: 'failed',
-      message: 'Could not create a new reading. Please provide valid data.',
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Validation error: ' + messages.join('. '),
+      });
+    }
+    res.status(500).json({
+      status: 'fail',
+      message: 'An error occurred: ' + err.message,
     });
   }
 };
@@ -113,9 +93,16 @@ exports.createManyWeather = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(400).json({
-      status: 'failed',
-      message: err.message,
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Validation error: ' + messages.join('. '),
+      });
+    }
+    res.status(500).json({
+      status: 'error',
+      message: 'Unable to precess request due to server error.',
     });
   }
 };
@@ -137,15 +124,22 @@ exports.updateWeather = async (req, res) => {
       runValidators: true,
     });
     res.status(200).json({
-      status: 'Success',
+      status: 'success',
       data: {
         weather,
       },
     });
   } catch (err) {
-    res.status(404).json({
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Validation error: ' + messages.join('. '),
+      });
+    }
+    res.status(500).json({
       status: 'fail',
-      message: 'Failed to update, No weather found with that ID',
+      message: 'An error occurred: ' + err.message,
     });
   }
 };
@@ -190,7 +184,7 @@ exports.updatePrecipitation = async (req, res) => {
       });
     }
     res.status(500).json({
-      status: 'fail',
+      status: 'error',
       message: 'An error occurred: ' + err.message,
     });
   }
@@ -221,34 +215,16 @@ exports.deleteWeather = async (req, res) => {
       });
     }
   } catch (err) {
-    // 捕获并处理任何可能的错误
     res.status(500).json({
-      status: 'fail',
+      status: 'error',
       message: err.message,
     });
   }
 };
 
-// exports.deleteWeather = async (req, res) => {
-//   try {
-//     // Do not send back any data to the client when there was a delete operation
-//     await Weather.findByIdAndDelete(req.params.id);
-//     res.status(204).json({
-//       status: 'success',
-//       message: `Deleted ${req.params.id} reading.`,
-//       data: null,
-//     });
-//   } catch (err) {
-//     res.status(404).json({
-//       status: 'fail',
-//       message: 'Failed to delete the data, please provide valid data ID',
-//     });
-//   }
-// };
-
 /**
  *
- * GET /max-Precipitation
+ * GET /max-Precipitation/:sensorName
  *
  * Get maximum precipitation for a specific sensor in the last 5 months
  *
@@ -257,16 +233,25 @@ exports.deleteWeather = async (req, res) => {
  */
 
 exports.getMaxPrecipitation = async (req, res) => {
-  const { sensorName } = req.params;
-  const currentDate = new Date();
-  const fiveMonthsAgo = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 5,
-    currentDate.getDate()
-  );
-
   try {
-    const maxPrecipitationReading = await Weather.aggregate([
+    // Destruct sensorName from req.params
+    const { sensorName } = req.params;
+
+    if (!/^[a-zA-Z0-9_]+$/.test(sensorName)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid sensor name format',
+      });
+    }
+
+    const currentDate = new Date();
+    const fiveMonthsAgo = new Date(
+      currentDate.getFullYear(), // get year from current date
+      currentDate.getMonth() - 5, // 0 based, get the current month and subtracts 5 to get the month five months ago
+      currentDate.getDate() // get current date
+    );
+
+    const maxPrecipitation = await Weather.aggregate([
       // Filter for data from the specific sensor within the last five months
       {
         $match: {
@@ -293,7 +278,7 @@ exports.getMaxPrecipitation = async (req, res) => {
       },
     ]);
 
-    if (maxPrecipitationReading.length === 0) {
+    if (maxPrecipitation.length === 0) {
       return res.status(404).json({
         status: 'fail',
         message:
@@ -303,12 +288,12 @@ exports.getMaxPrecipitation = async (req, res) => {
 
     res.status(200).json({
       status: 'success',
-      data: maxPrecipitationReading[0],
+      data: maxPrecipitation[0],
     });
   } catch (err) {
     res.status(500).json({
       status: 'error',
-      message: 'Error occurred while querying for maximum precipitation',
+      message: 'Internal server error',
     });
   }
 };
@@ -389,52 +374,6 @@ exports.getMaxTemp = async (req, res) => {
   }
 };
 
-// exports.getMaxTemp = async (req, res) => {
-//   try {
-//     const year = req.params.year * 1;
-//     const stats = await Weather.aggregate([
-//       // Match documents for 1 year
-//       {
-//         $match: {
-//           time: {
-//             $gte: new Date(`${year}-01-01`),
-//             $lte: new Date(`${year}-12-31`),
-//           },
-//         },
-//       },
-//       // Group documents by sensor and find max precipitation
-//       {
-//         $group: {
-//           _id: '$deviceName',
-//           maxTemp: { $max: '$temperature' },
-//           readingDate: { $last: '$time' },
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           deviceName: '$_id',
-//           readingDate: 1,
-//           maxTemp: 1,
-//         },
-//       },
-
-//       // { $sort: { maxPrecipitation: 1 } },
-//     ]);
-//     res.status(200).json({
-//       status: 'Success',
-//       data: {
-//         stats,
-//       },
-//     });
-//   } catch (err) {
-//     res.status(404).json({
-//       status: 'fail',
-//       message: 'Failed to get the data. Please try again',
-//     });
-//   }
-// };
-
 exports.getWeatherStats = async (req, res) => {
   const { sensorName } = req.params;
   const { date, time } = req.query;
@@ -445,7 +384,6 @@ exports.getWeatherStats = async (req, res) => {
   try {
     const weatherReading = await Weather.findOne({
       deviceName: sensorName,
-      // 使用 ISODate 进行查询
       time: {
         $gte: new Date(dateTime.toISOString()),
         $lt: new Date(new Date(dateTime).getTime() + 1000),
