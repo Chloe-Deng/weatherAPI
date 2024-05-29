@@ -64,8 +64,8 @@ const router = express.Router();
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: "fail"
+ *                   type: integer
+ *                   example: 401
  *                 message:
  *                   type: string
  *                   example: "You are not logged in! Please log in to get access."
@@ -79,8 +79,8 @@ const router = express.Router();
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: "fail"
+ *                   type: integer
+ *                   example: 404
  *                 message:
  *                   type: string
  *                   example: "No precipitation record found for the specified sensor in the last five months."
@@ -258,13 +258,21 @@ router
  *           type: string
  *           example: 'Yandina_Sensor'
  *       - in: query
- *         name: date-time
+ *         name: date
  *         required: true
  *         description: The date for which to retrieve the weather statistics
  *         schema:
  *           type: string
- *           format: date-time
- *           example: 'date=2021-05-07&time=00:44:04'
+ *           format: date
+ *           example: '2021-05-07'
+ *       - in: query
+ *         name: time
+ *         required: true
+ *         description: The time for which to retrieve the weather statistics
+ *         schema:
+ *           type: string
+ *           format: time
+ *           example: '00:44:04'
  *     responses:
  *       200:
  *         description: Weather statistics retrieved successfully
@@ -306,7 +314,7 @@ router
  *                   example: 400
  *                 message:
  *                   type: string
- *                   example: "Invalid date format for startDate or endDate."
+ *                   example: "Invalid date or time format."
  *       401:
  *         description: Unauthorized access, token missing or invalid
  *         content:
@@ -334,7 +342,7 @@ router
  *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "Sensor name not found or no data for the given date"
+ *                   example: "No reading found for the specified date and time."
  *       500:
  *         description: Database error
  *         content:
@@ -407,8 +415,8 @@ router
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: fail
+ *                   type: integer
+ *                   example: 400
  *                 message:
  *                   type: string
  *                   example: "Validation error: Precipitation cannot be negative."
@@ -439,7 +447,7 @@ router
  *                   example: 404
  *                 message:
  *                   type: string
- *                   example: "Weather data not found"
+ *                   example: "No weather found with that ID."
  *       500:
  *         description: Database error
  *         content:
@@ -452,7 +460,7 @@ router
  *                   example: 500
  *                 message:
  *                   type: string
- *                   example: "Error processing request"
+ *                   example: "An error occurred when updating the precipitation."
  */
 
 router
@@ -465,7 +473,7 @@ router
 
 /**
  * @openapi
- * /api/v1/weather/weather:
+ * /api/v1/weather:
  *   get:
  *     summary: Get all weather data (Teacher and student only)
  *     tags: [Weather Readings]
@@ -482,9 +490,12 @@ router
  *                 status:
  *                   type: integer
  *                   example: 200
+ *                 results:
+ *                   type: integer
+ *                   example: 2
  *                 message:
  *                   type: string
- *                   example: Success, Get all weather data
+ *                   example: Success
  *                 data:
  *                   type: object
  *                   properties:
@@ -492,6 +503,31 @@ router
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/WeatherData'
+ *                       example:
+ *                         - humidity: 70
+ *                           latitude: 152.77891
+ *                           atmosphericPressure: 128.08
+ *                           deviceName: "Woodford_Sensor"
+ *                           longitude: -26.95064
+ *                           maxWindSpeed: 5.16
+ *                           solarRadiation: 600.22
+ *                           temperature: 23.4
+ *                           time: "2022-05-07T02:14:09.000Z"
+ *                           vaporPressure: 1.76
+ *                           windDirection: 149.36
+ *                           precipitation: 0.085
+ *                         - humidity: 65
+ *                           latitude: 152.77991
+ *                           atmosphericPressure: 130.08
+ *                           deviceName: "Everton_Sensor"
+ *                           longitude: -26.95164
+ *                           maxWindSpeed: 4.56
+ *                           solarRadiation: 620.12
+ *                           temperature: 24.1
+ *                           time: "2022-05-07T03:14:09.000Z"
+ *                           vaporPressure: 1.80
+ *                           windDirection: 148.56
+ *                           precipitation: 0.095
  *
  *       401:
  *         description: Unauthorized access, token missing or invalid login credentials
@@ -523,12 +559,12 @@ router
  *                   type: string
  *             example:
  *               status: 500
- *               message: Error processing request
+ *               message: Failed to get the weather data.
  */
 
 /**
  * @openapi
- * /api/v1/weather/weather:
+ * /api/v1/weather:
  *   post:
  *     summary: Insert a single new reading (Teacher and sensor only)
  *     tags: [Weather Readings]
@@ -548,6 +584,9 @@ router
  *             schema:
  *               type: object
  *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
  *                 status:
  *                   type: string
  *                   example: success
@@ -577,8 +616,8 @@ router
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: fail
+ *                   type: integer
+ *                   example: 401
  *                 message:
  *                   type: string
  *                   example: "You are not logged in! Please log in to get access."
@@ -597,7 +636,7 @@ router
  *                   type: string
  *             example:
  *               status: 500
- *               message: Error processing request
+ *               message: "An error occurred when creating a new weather reading!"
  *
  *
  */
@@ -608,6 +647,8 @@ router
  *   post:
  *     summary: Insert multiple weather readings (Teacher and Sensor only)
  *     tags: [Weather Readings]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -729,6 +770,13 @@ router
  *                   type: string
  *                   example: Unable to process request due to server error
  */
+router
+  .route('/batch')
+  .post(
+    authController.protect,
+    authController.restrictTo('teacher', 'sensor'),
+    weatherController.createManyWeather
+  );
 
 /**
  * @openapi
@@ -857,7 +905,7 @@ router
  *                   type: string
  *             example:
  *               status: 404
- *               message: Weather data not found
+ *               message: No document found with that ID
  *       500:
  *         description: Database error
  *         content:
@@ -871,7 +919,7 @@ router
  *                   type: string
  *             example:
  *               status: 500
- *               message: Error processing request
+ *               message: Error processing request.
  */
 
 router
@@ -885,14 +933,6 @@ router
     authController.protect,
     authController.restrictTo('teacher', 'sensor'),
     weatherController.createWeather
-  );
-
-router
-  .route('/batch')
-  .post(
-    authController.protect,
-    authController.restrictTo('teacher', 'sensor'),
-    weatherController.createManyWeather
   );
 
 router

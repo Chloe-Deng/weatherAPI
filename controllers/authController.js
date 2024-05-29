@@ -79,6 +79,10 @@ exports.login = catchAsync(async (req, res, next) => {
 
   // 1) Check if email and password exist
   if (!email || !password) {
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 3 * 1000),
+      httpOnly: true,
+    });
     // We have to return this function, otherwise it will send an error response to the client
     return next(new AppError('Please provide email and password!', 400));
   }
@@ -88,6 +92,10 @@ exports.login = catchAsync(async (req, res, next) => {
   // const correct = await user.correctPassword(password, user.password);
 
   if (!user || !(await user.correctPassword(password, user.password))) {
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 3 * 1000),
+      httpOnly: true,
+    });
     return next(new AppError('Incorrect email or password', 401));
   }
 
@@ -106,41 +114,41 @@ exports.logout = (req, res) => {
   res.status(200).json({ status: 'success' });
 };
 
-exports.createUser = async (req, res) => {
-  try {
-    // Ensure that only teachers can specify user roles, otherwise set the default role.
-    const role = req.user.role === 'teacher' ? req.body.role : 'user';
+// exports.createUser = async (req, res) => {
+//   try {
+//     // Ensure that only teachers can specify user roles, otherwise set the default role.
+//     const role = req.user.role === 'teacher' ? req.body.role : 'user';
 
-    const newUser = await User.create({
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password,
-      passwordConfirm: req.body.passwordConfirm,
-      role: role, // User roles are assigned by the administrator or set as defaults
-    });
+//     const newUser = await User.create({
+//       name: req.body.name,
+//       email: req.body.email,
+//       password: req.body.password,
+//       passwordConfirm: req.body.passwordConfirm,
+//       role: role, // User roles are assigned by the administrator or set as defaults
+//     });
 
-    newUser.password = undefined; // Do not send the password to user
+//     newUser.password = undefined; // Do not send the password to user
 
-    res.status(201).json({
-      status: 'success',
-      data: {
-        user: newUser,
-      },
-    });
-  } catch (err) {
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map((val) => val.message);
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Validation error: ' + messages.join('. '),
-      });
-    }
-    res.status(500).json({
-      status: 'fail',
-      message: 'An error occurred: ' + err.message,
-    });
-  }
-};
+//     res.status(201).json({
+//       status: 'success',
+//       data: {
+//         user: newUser,
+//       },
+//     });
+//   } catch (err) {
+//     if (err.name === 'ValidationError') {
+//       const messages = Object.values(err.errors).map((val) => val.message);
+//       return res.status(400).json({
+//         status: 'fail',
+//         message: 'Validation error: ' + messages.join('. '),
+//       });
+//     }
+//     res.status(500).json({
+//       status: 'fail',
+//       message: 'An error occurred: ' + err.message,
+//     });
+//   }
+// };
 
 exports.protect = catchAsync(async (req, res, next) => {
   // 1) Getting token and check of it's there

@@ -156,8 +156,8 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: success
+                type: integer
+                example: 200
               message:
                 type: string
                 example: 'Successful response with user object'
@@ -171,8 +171,8 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: fail
+                type: integer
+                example: 400
               message:
                 type: string
                 example: 'Invalid request parameters'
@@ -184,8 +184,8 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: fail
+                type: integer
+                example: 401
               message:
                 type: string
                 example: 'You are not logged in! Please log in to get access.'
@@ -197,8 +197,8 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: fail
+                type: integer
+                example: 403
               message:
                 type: string
                 example: 'You do not have permission to perform this action.'
@@ -210,8 +210,8 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: error
+                type: integer
+                example: 500
               message:
                 type: string
                 example: 'Internal server error occurred!'
@@ -223,11 +223,11 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: fail
+                type: number
+                example: 404
               message:
                 type: string
-                example: Weather data not found
+                example: Weather data not found.
     404_BadRequest_User:
       description: User data not found
       content:
@@ -236,8 +236,8 @@ components:
             type: object
             properties:
               status:
-                type: string
-                example: fail
+                type: number
+                example: 404
               message:
                 type: string
                 example: User data not found

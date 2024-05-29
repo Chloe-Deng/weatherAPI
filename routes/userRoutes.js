@@ -113,7 +113,7 @@ router.post('/signup', authController.signup);
  *               email:
  *                 type: string
  *                 format: email
- *                 example: user1@email.com
+ *                 example: teacher@email.com
  *               password:
  *                 type: string
  *                 format: password
@@ -133,7 +133,7 @@ router.post('/signup', authController.signup);
  *                   type: string
  *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       400:
- *         description: Unauthenticated, possibly due to missing or invalid credentials.
+ *         description: Bad request, possibly due to missing or invalid credentials.
  *         content:
  *           application/json:
  *             schema:
@@ -145,6 +145,19 @@ router.post('/signup', authController.signup);
  *                 message:
  *                   type: string
  *                   example: "Please provide email or password."
+ *       401:
+ *         description: Unauthorized, invalid credentials.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: "Incorrect email or password."
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -224,7 +237,7 @@ router.get('/logout', authController.logout);
  *                 example: Reece
  *               email:
  *                 type: string
- *                 example: user10@email.com
+ *                 example: student@email.com
  *               password:
  *                 type: string
  *                 format: password
@@ -235,7 +248,7 @@ router.get('/logout', authController.logout);
  *                 example: pass1234
  *               role:
  *                 type: string
- *                 example: user
+ *                 example: student
  *     responses:
  *       201:
  *         description: User created successfully
@@ -255,7 +268,7 @@ router.get('/logout', authController.logout);
  *                       properties:
  *                         role:
  *                           type: string
- *                           example: user
+ *                           example: student
  *                         _id:
  *                           type: string
  *                           example: 6625031841e8f860b8a47763
@@ -264,7 +277,7 @@ router.get('/logout', authController.logout);
  *                           example: Reece
  *                         email:
  *                           type: string
- *                           example: user10@email.com
+ *                           example: student@email.com
  *                         lastLoggedIn:
  *                           type: string
  *                           format: date-time
@@ -288,8 +301,8 @@ router.get('/logout', authController.logout);
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: fail
+ *                   type: integer
+ *                   example: 400
  *                 message:
  *                   type: string
  *                   example: "Validation error: Please tell us your name!"
@@ -305,7 +318,7 @@ router.post(
   '/create-user',
   authController.protect,
   authController.restrictTo('teacher'),
-  authController.createUser
+  userController.createUser
 );
 
 /**
@@ -361,7 +374,7 @@ router.post(
  *                   example: 401
  *                 message:
  *                   type: string
- *                   example: "Unauthorized access, token missing or invalid."
+ *                   example: "You are not logged in! Please log in to get access."
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
  *       404:
@@ -435,13 +448,48 @@ router
  *                   type: string
  *                   example: "3 users' roles updated successfully"
  *       400:
- *         $ref: '#/components/responses/400_InvalidRequest'
+ *         description: Bad request due to invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid date format."
  *       401:
  *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
+ *       404:
+ *         description: Not Found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 message:
+ *                   type: string
+ *                   example: "No users found with creation dates within the specified range."
  *       500:
- *         $ref: '#/components/responses/500_Error'
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "Error updating user role."
  */
 
 router
@@ -478,7 +526,7 @@ router.use(authController.restrictTo('teacher'));
  *                   example: success
  *                 results:
  *                   type: number
- *                   example: 6
+ *                   example: 2
  *                 data:
  *                   type: object
  *                   properties:
@@ -486,6 +534,25 @@ router.use(authController.restrictTo('teacher'));
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/User'
+ *               example:
+ *                 status: success
+ *                 results: 2
+ *                 data:
+ *                   users:
+ *                     - _id: "66052e5c89bb66798c905c16"
+ *                       name: "Rachel"
+ *                       email: "teacher1@email.com"
+ *                       password: "pass1234"
+ *                       passwordConfirmed: "pass1234"
+ *                       role: "teacher"
+ *                       __v: 0
+ *                     - _id: "66052e5c89bb66798c905c17"
+ *                       name: "John"
+ *                       email: "teacher2@email.com"
+ *                       password: "pass5678"
+ *                       passwordConfirmed: "pass5678"
+ *                       role: "teacher"
+ *                       __v: 0
  *       401:
  *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
@@ -508,45 +575,6 @@ router.use(authController.restrictTo('teacher'));
  */
 
 router.route('/').get(userController.getAllUsers);
-
-/**
- * @openapi
- * /api/v1/users/{id}:
- *   get:
- *     summary: Get a specific user by their ID (Teacher only)
- *     description: Accessible by users with the 'teacher' role.
- *     tags: [Users]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         $ref: "#/components/responses/200_UserObject"
- *       401:
- *         $ref: '#/components/responses/401_Unauthorized'
- *       403:
- *         $ref: '#/components/responses/403_ForbiddenError'
- *       404:
- *         description: Not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: integer
- *                   example: 404
- *                 message:
- *                   type: string
- *                   example: "No user found for this ID."
- *       500:
- *         $ref: '#/components/responses/500_Error'
- */
 
 /**
  * @openapi
@@ -590,6 +618,19 @@ router.route('/').get(userController.getAllUsers);
  *                   properties:
  *                     data:
  *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example:  "Validation error: Please provide a valid email"
  *       401:
  *         $ref: '#/components/responses/401_Unauthorized'
  *       403:
@@ -608,7 +649,18 @@ router.route('/').get(userController.getAllUsers);
  *                   type: string
  *                   example: "No user found for this ID."
  *       500:
- *         description: An internal server error occurred.
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "An error occurred during the update!"
  */
 
 /**
@@ -639,8 +691,18 @@ router.route('/').get(userController.getAllUsers);
  *       403:
  *         $ref: '#/components/responses/403_ForbiddenError'
  *       500:
- *         $ref: '#/components/responses/500_Error'
-
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 message:
+ *                   type: string
+ *                   example: "An error occurred during deleting user!"
  */
 router
   .route('/:id')

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Weather = require('./../models/weatherModel');
 const APIFeatures = require('./../utils/apiFeatures');
 const AppError = require('./../utils/appError');
@@ -21,10 +22,15 @@ exports.getAllWeather = async (req, res) => {
 
     const weather = await features.query;
 
-    // Return a promise
-    // const weather = await Weather.find();
+    if (weather.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: 'Weather data not found.',
+      });
+    }
 
     res.status(200).json({
+      statusCode: 200,
       status: 'success',
       results: weather.length,
       data: {
@@ -32,9 +38,9 @@ exports.getAllWeather = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(404).json({
-      status: 'fail',
-      message: 'Failed to get the weather data',
+    res.status(500).json({
+      status: 500,
+      message: 'Failed to get the weather data.',
     });
   }
 };
@@ -52,22 +58,22 @@ exports.createWeather = async (req, res) => {
     const newWeather = await Weather.create(req.body);
 
     res.status(201).json({
+      statusCode: 201,
       status: 'success',
-      data: {
-        weather: newWeather,
-      },
+      message: 'Weather data successfully created',
+      data: newWeather,
     });
   } catch (err) {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'Validation error: ' + messages.join('. '),
       });
     }
     res.status(500).json({
-      status: 'fail',
-      message: 'An error occurred: ' + err.message,
+      status: 500,
+      message: 'An error occurred when creating a new weather reading!',
     });
   }
 };
@@ -96,12 +102,12 @@ exports.createManyWeather = async (req, res) => {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'Validation error: ' + messages.join('. '),
       });
     }
     res.status(500).json({
-      status: 'error',
+      status: 500,
       message: 'Unable to precess request due to server error.',
     });
   }
@@ -119,43 +125,69 @@ exports.createManyWeather = async (req, res) => {
  */
 exports.updateWeather = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid ID format.',
+      });
+    }
+
     const weather = await Weather.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
+
+    if (!weather) {
+      return res.status(404).json({
+        status: 404,
+        message: 'Fail to update, no weather found with that ID.',
+      });
+    }
+
     res.status(200).json({
-      status: 'success',
-      data: {
-        weather,
-      },
+      status: 200,
+      message: 'Weather data updated successfully',
+      data: weather,
     });
   } catch (err) {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'Validation error: ' + messages.join('. '),
       });
     }
     res.status(500).json({
-      status: 'fail',
-      message: 'An error occurred: ' + err.message,
+      status: 500,
+      message: 'Error processing request.',
     });
   }
 };
 
 exports.updatePrecipitation = async (req, res) => {
   try {
-    if (req.body.precipitation === undefined) {
+    const { id } = req.params;
+    const { precipitation } = req.body;
+
+    if (precipitation === undefined) {
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'No precipitation value provided for update',
       });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid ID format',
+      });
+    }
+
     const weather = await Weather.findByIdAndUpdate(
-      req.params.id,
-      { precipitation: req.body.precipitation },
+      id,
+      { precipitation: precipitation },
       {
         new: true,
         runValidators: true,
@@ -164,7 +196,7 @@ exports.updatePrecipitation = async (req, res) => {
 
     if (!weather) {
       return res.status(404).json({
-        status: 'fail',
+        status: 404,
         message: 'No weather found with that ID',
       });
     }
@@ -179,13 +211,13 @@ exports.updatePrecipitation = async (req, res) => {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'Validation error: ' + messages.join('. '),
       });
     }
     res.status(500).json({
-      status: 'error',
-      message: 'An error occurred: ' + err.message,
+      status: 500,
+      message: 'An error occurred when updating the precipitation.',
     });
   }
 };
@@ -201,23 +233,42 @@ exports.updatePrecipitation = async (req, res) => {
  */
 exports.deleteWeather = async (req, res) => {
   try {
-    const doc = await Weather.findOneAndDelete({ _id: req.params.id });
+    const { id } = req.params;
 
-    if (doc) {
-      res.status(204).json({
-        status: 'success',
-        data: null,
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid ID format',
       });
-    } else {
-      res.status(404).json({
-        status: 'fail',
+    }
+
+    const doc = await Weather.findOneAndDelete({ _id: id });
+
+    console.log('Result of findOneAndDelete:', doc);
+
+    if (!doc) {
+      return res.status(404).json({
+        status: 404,
+        message: 'Fail to delete, no document found with that ID',
+      });
+    }
+
+    res.status(204).json({
+      status: 'success',
+      message: 'Document deleted successfully.',
+      data: null,
+    });
+  } catch (err) {
+    if (err.message === 'No document found with that ID') {
+      return res.status(404).json({
+        status: 404,
         message: 'No document found with that ID',
       });
     }
-  } catch (err) {
+
     res.status(500).json({
-      status: 'error',
-      message: err.message,
+      status: 500,
+      message: 'Error processing request: ' + err.message,
     });
   }
 };
@@ -234,12 +285,12 @@ exports.deleteWeather = async (req, res) => {
 
 exports.getMaxPrecipitation = async (req, res) => {
   try {
-    // Destruct sensorName from req.params
     const { sensorName } = req.params;
 
-    if (!/^[a-zA-Z0-9_]+$/.test(sensorName)) {
+    // Verify that the sensorName contains only letters (both upper and lower case), numbers, and underscores
+    if (!/^[a-zA-Z_]+$/.test(sensorName)) {
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'Invalid sensor name format',
       });
     }
@@ -280,7 +331,7 @@ exports.getMaxPrecipitation = async (req, res) => {
 
     if (maxPrecipitation.length === 0) {
       return res.status(404).json({
-        status: 'fail',
+        status: '404',
         message:
           'No precipitation record found for the specified sensor in the last five months',
       });
@@ -292,7 +343,7 @@ exports.getMaxPrecipitation = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      status: 'error',
+      status: 500,
       message: 'Internal server error',
     });
   }
@@ -313,7 +364,20 @@ exports.getMaxPrecipitation = async (req, res) => {
  */
 
 exports.getMaxTemp = async (req, res) => {
-  const { startDate, endDate } = req.query; // Assume these are provided as query parameters in ISO format
+  const { startDate, endDate } = req.query;
+
+  // YYYY-MM-DD
+  const isValidDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return !isNaN(date.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(dateStr); //boolean
+  };
+
+  if (!isValidDate(startDate) || !isValidDate(endDate)) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Invalid date format for startDate or endDate.',
+    });
+  }
 
   // Convert query parameters to dates
   const startDateTime = new Date(startDate);
@@ -354,11 +418,10 @@ exports.getMaxTemp = async (req, res) => {
       },
     ]);
 
-    // Check if we found any readings
     if (maxTemperatureReading.length === 0) {
       return res.status(404).json({
-        status: 'fail',
-        message: 'No temperature readings found for the specified date range',
+        status: 404,
+        message: 'No temperature readings found for the specified date range.',
       });
     }
 
@@ -368,8 +431,8 @@ exports.getMaxTemp = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      status: 'error',
-      message: 'Error occurred while querying for maximum temperature',
+      status: 500,
+      message: 'Error occurred while querying for maximum temperature.',
     });
   }
 };
@@ -378,8 +441,30 @@ exports.getWeatherStats = async (req, res) => {
   const { sensorName } = req.params;
   const { date, time } = req.query;
 
-  const dateTimeISO = `${date}T${time}Z`;
-  const dateTime = new Date(dateTimeISO);
+  if (!sensorName) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Sensor name is required.',
+    });
+  }
+
+  if (!date || !time) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Date and time are required.',
+    });
+  }
+
+  const dateTimeISO = `${date}T${time}Z`; // Convert date and time to ISO string
+  const dateTime = new Date(dateTimeISO); // Convert ISO string to date object
+
+  // Handle invalid date format
+  if (isNaN(dateTime.getTime())) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Invalid date or time format.',
+    });
+  }
 
   try {
     const weatherReading = await Weather.findOne({
@@ -394,8 +479,8 @@ exports.getWeatherStats = async (req, res) => {
 
     if (!weatherReading) {
       return res.status(404).json({
-        status: 'fail',
-        message: 'No reading found for the specified date and time',
+        status: 404,
+        message: 'No reading found for the specified date and time.',
       });
     }
 
@@ -407,8 +492,8 @@ exports.getWeatherStats = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      status: 'error',
-      message: err.message,
+      status: 500,
+      message: `Error processing request: ${err.message}`,
     });
   }
 };

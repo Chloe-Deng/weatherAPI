@@ -1,6 +1,7 @@
 const User = require('./../models/userModel');
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
+const mongoose = require('mongoose');
 
 exports.getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find();
@@ -17,32 +18,116 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.updateUser = catchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
+exports.createUser = async (req, res) => {
+  try {
+    // Ensure that only teachers can specify user roles, otherwise set the default role.
+    const role = req.user.role === 'teacher' ? req.body.role : 'user';
 
-  if (!user) {
-    return next(new AppError('No user found with that ID', 404));
+    const newUser = await User.create({
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password,
+      passwordConfirm: req.body.passwordConfirm,
+      role: role, // User roles are assigned by the administrator or set as defaults
+    });
+
+    newUser.password = undefined; // Do not send the password to user
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        user: newUser,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        status: 400,
+        message: 'Validation error: ' + messages.join('. '),
+      });
+    } else if (err.code && err.code === 11000) {
+      const field = Object.keys(err.keyValue)[0];
+      return res.status(400).json({
+        status: 400,
+        message: `Duplicate key error: ${field} already exists.`,
+      });
+    }
+    res.status(500).json({
+      status: 500,
+      message: 'Internal server error occurred!',
+    });
   }
+};
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      data: user,
-    },
-  });
-});
+exports.updateUser = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return next(new AppError('No user found with that ID', 404));
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: 'Updated successfully',
+      data: {
+        user,
+      },
+    });
+  } catch (err) {
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        status: 400,
+        message: `Validation error: ${messages.join('. ')}`,
+      });
+    }
+
+    if (err.name === 'CastError') {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid user ID format',
+      });
+    }
+
+    if (err.code && err.code === 11000) {
+      const field = Object.keys(err.keyValue)[0];
+      return res.status(400).json({
+        status: 400,
+        message: `Duplicate key error: ${field} already exists.`,
+      });
+    }
+
+    console.error('Error during user update:', err);
+    res.status(500).json({
+      status: 500,
+      message: 'An error occurred during the update.',
+    });
+  }
+};
 
 exports.deleteUser = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid ID format',
+      });
+    }
+
     const user = await User.findByIdAndDelete(req.params.id);
 
     if (!user) {
       return res.status(404).json({
-        status: 'fail',
-        message: 'No user found with that ID',
+        status: 404,
+        message: 'User data not found.',
       });
     }
 
@@ -52,8 +137,8 @@ exports.deleteUser = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({
-      status: 'error',
-      message: 'Error deleting user',
+      status: 500,
+      message: 'An error occurred during deleting user!',
     });
   }
 };
@@ -61,6 +146,14 @@ exports.deleteUser = async (req, res) => {
 exports.deleteUsersByLastLogin = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+
+    if (isNaN(Date.parse(startDate)) || isNaN(Date.parse(endDate))) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid date format for startDate or endDate.',
+      });
+    }
+
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -78,41 +171,40 @@ exports.deleteUsersByLastLogin = async (req, res) => {
 
     if (result.deletedCount === 0) {
       return res.status(404).json({
-        status: 'fail',
-        message: 'No users found with the specified role and date range.',
+        status: 404,
+        message: `No users found with 'student' role and last login dates within the specified range.`,
       });
     }
 
     res.status(204).json({
       status: 'success',
       data: null,
-      message: 'Students deleted successfully.',
     });
   } catch (err) {
     res.status(500).json({
-      status: 'error',
-      message: 'Error deleting users',
+      status: 500,
+      message: 'Internal server error occurred!',
     });
   }
 };
 
-exports.updateUsersRole = async (req, res, next) => {
-  const validRoles = ['teacher', 'teacher', 'sensor'];
+exports.updateUsersRole = async (req, res) => {
+  const validRoles = ['teacher', 'student', 'sensor'];
 
   try {
     const { startDate, endDate, newRole } = req.query;
 
     if (!startDate || !endDate || !newRole) {
       return res.status(400).json({
-        status: 'fail',
-        message: 'Please provide startDate, endDate, and newRole',
+        status: 400,
+        message: 'Please provide startDate, endDate, and newRole.',
       });
     }
 
     if (!validRoles.includes(newRole)) {
       return res.status(400).json({
-        status: 'fail',
-        message: 'Invalid role specified',
+        status: 400,
+        message: 'Invalid role specified.',
       });
     }
 
@@ -121,8 +213,8 @@ exports.updateUsersRole = async (req, res, next) => {
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return res.status(400).json({
-        status: 'fail',
-        message: 'Invalid date format',
+        status: 400,
+        message: 'Invalid date format.',
       });
     }
 
@@ -140,20 +232,20 @@ exports.updateUsersRole = async (req, res, next) => {
 
     if (result.nModified === 0) {
       return res.status(404).json({
-        status: 'not found',
+        status: 404,
         message:
-          'No users found with creation dates within the specified range',
+          'No users found with creation dates within the specified range.',
       });
     }
 
     res.status(200).json({
       status: 'success',
-      message: `${result.nModified} users' roles updated successfully`,
+      message: `${result.nModified} users' roles updated successfully.`,
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: 'Error updating user role',
+      status: 500,
+      message: 'An error occurred during the update!',
     });
   }
 };
