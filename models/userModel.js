@@ -40,13 +40,13 @@ const userSchema = new mongoose.Schema(
     },
     lastLoggedIn: {
       type: Date,
-      default: Date.now, 
+      default: Date.now,
     },
 
     passwordChangedAt: Date,
   },
   {
-    timestamps: true,
+    timestamps: true, //Automatically create updateAt and createAt field
   }
 );
 
@@ -94,34 +94,3 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
-
-// const user = {
-//   name: 'Josh',
-//   email: 'student4@email.com',
-//   password: 'pass1234',
-//   passwordConfirm: 'pass1234',
-//   role: 'student',
-// };
-// fetch('http://localhost:3001/api/v1/users', {
-//   method: 'POST',
-//   headers: {
-//     'Content-type': 'application/json',
-//   },
-//   body: JSON.stringify(user),
-// })
-//   .then((res) => res.json())
-//   .then((data) => console.log(data));
-
-const user = {
-  email: 'teacher1@email.com',
-  password: 'pass1234',
-};
-fetch('http://localhost:3001/api/v1/users/login', {
-  method: 'POST',
-  headers: {
-    'Content-type': 'application/json',
-  },
-  body: JSON.stringify(user),
-})
-  .then((res) => res.json())
-  .then((data) => console.log(data));

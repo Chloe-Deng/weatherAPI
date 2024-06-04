@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('./../models/userModel');
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
+const mongoose = require('mongoose');
 
 const signToken = (id) => {
   return jwt.sign({ id: id }, process.env.JWT_SECRET, {
@@ -52,6 +53,7 @@ exports.signup = async (req, res) => {
 
     createSendToken(newUser, 201, req, res);
   } catch (err) {
+    // console.log(err);
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({
@@ -79,6 +81,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   // 1) Check if email and password exist
   if (!email || !password) {
+    // If no email or password is provided, set a short-lived loggedout cookie to ensure that the client doesn't have a logged-in state.
     res.cookie('jwt', 'loggedout', {
       expires: new Date(Date.now() + 3 * 1000),
       httpOnly: true,
@@ -87,11 +90,14 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide email and password!', 400));
   }
 
+  // await mongoose.disconnect();
+
   // 2) Check if user exists && password is correct
-  const user = await User.findOne({ email: email }).select('+password');
+  const user = await User.findOne({ email: email }).select('+password -__v');
   // const correct = await user.correctPassword(password, user.password);
 
   if (!user || !(await user.correctPassword(password, user.password))) {
+    // Set the loggedout cookie if the user does not exist or the password is incorrect.
     res.cookie('jwt', 'loggedout', {
       expires: new Date(Date.now() + 3 * 1000),
       httpOnly: true,
@@ -99,56 +105,39 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Incorrect email or password', 401));
   }
 
+  // 3) Update the user's last login time
   user.lastLoggedIn = new Date();
   await user.save({ validateBeforeSave: false });
 
-  // 3) If everything is ok, send token to client
+  // 4) If everything is ok, send token to client
   createSendToken(user, 200, req, res);
 });
 
-exports.logout = (req, res) => {
-  res.cookie('jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000), // expire after 10 seconds
-    httpOnly: true,
-  });
-  res.status(200).json({ status: 'success' });
+exports.logout = (req, res, next) => {
+  try {
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 3 * 1000), // expire after 3 seconds
+      httpOnly: true,
+    });
+
+    res.status(200).json({ status: 'success' });
+
+    // setTimeout(() => {
+    //   try {
+    //     // Simulate failing to send the response
+    //     throw new Error('Simulated response sending error');
+
+    //     res.status(200).json({ status: 'success' });
+    //   } catch (err) {
+    //     next(
+    //       new AppError('Failed to send response. Please try again later.', 500)
+    //     );
+    //   }
+    // }, 5000); // delay 5 seconds
+  } catch (err) {
+    next(new AppError('Failed to log out. Please try again later.', 500));
+  }
 };
-
-// exports.createUser = async (req, res) => {
-//   try {
-//     // Ensure that only teachers can specify user roles, otherwise set the default role.
-//     const role = req.user.role === 'teacher' ? req.body.role : 'user';
-
-//     const newUser = await User.create({
-//       name: req.body.name,
-//       email: req.body.email,
-//       password: req.body.password,
-//       passwordConfirm: req.body.passwordConfirm,
-//       role: role, // User roles are assigned by the administrator or set as defaults
-//     });
-
-//     newUser.password = undefined; // Do not send the password to user
-
-//     res.status(201).json({
-//       status: 'success',
-//       data: {
-//         user: newUser,
-//       },
-//     });
-//   } catch (err) {
-//     if (err.name === 'ValidationError') {
-//       const messages = Object.values(err.errors).map((val) => val.message);
-//       return res.status(400).json({
-//         status: 'fail',
-//         message: 'Validation error: ' + messages.join('. '),
-//       });
-//     }
-//     res.status(500).json({
-//       status: 'fail',
-//       message: 'An error occurred: ' + err.message,
-//     });
-//   }
-// };
 
 exports.protect = catchAsync(async (req, res, next) => {
   // 1) Getting token and check of it's there
@@ -196,7 +185,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 // Authorization middleware function
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
-    // roles ['admin', 'teacher'], role='user'
+    // roles ['student', 'teacher', 'sensor'], role='teacher'
 
     // get a role from the currentUser from the previous (protect) middleware
     if (!roles.includes(req.user.role)) {

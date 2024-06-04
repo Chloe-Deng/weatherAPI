@@ -4,7 +4,7 @@ const AppError = require('./../utils/appError');
 const mongoose = require('mongoose');
 
 exports.getAllUsers = catchAsync(async (req, res, next) => {
-  const users = await User.find();
+  const users = await User.find().select('-__v');
 
   // SEND RESPONSE
   res.status(200).json({

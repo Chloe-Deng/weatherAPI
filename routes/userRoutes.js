@@ -26,11 +26,11 @@ const router = express.Router();
  *             properties:
  *               name:
  *                 type: string
- *                 example: Joye
+ *                 example: Rachel
  *               email:
  *                 type: string
  *                 format: email
- *                 example: teacher3@email.com
+ *                 example: teacher1@email.com
  *               password:
  *                 type: string
  *                 format: password
@@ -63,7 +63,7 @@ const router = express.Router();
  *                   type: object
  *                   properties:
  *                     user:
- *                       $ref: '#/components/schemas/User'
+ *                       $ref: '#/components/schemas/UserResponse'
  *       400:
  *         description: Validation error
  *         content:
@@ -76,7 +76,7 @@ const router = express.Router();
  *                   example: fail
  *                 message:
  *                   type: string
- *                   example: "Validation error: Please tell us your name!"
+ *                   example: "Validation error: Password are not the same!"
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -203,13 +203,15 @@ router.post('/login', authController.login);
  *               type: object
  *               properties:
  *                 status:
- *                   type: string
- *                   example: error
+ *                   type: integer
+ *                   example: 500
  *                 message:
  *                   type: string
  *                   example: "An error occurred while processing the request."
  */
 router.get('/logout', authController.logout);
+
+router.use(authController.protect);
 
 /**
  * @openapi
@@ -290,9 +292,6 @@ router.get('/logout', authController.logout);
  *                           type: string
  *                           format: date-time
  *                           example: 2024-04-21T12:14:16.783Z
- *                         __v:
- *                           type: integer
- *                           example: 0
  *       400:
  *         description: Validation error
  *         content:
@@ -501,7 +500,7 @@ router
   );
 
 // Protect all routes after this middleware
-router.use(authController.protect);
+
 router.use(authController.restrictTo('teacher'));
 
 /**
@@ -545,14 +544,12 @@ router.use(authController.restrictTo('teacher'));
  *                       password: "pass1234"
  *                       passwordConfirmed: "pass1234"
  *                       role: "teacher"
- *                       __v: 0
  *                     - _id: "66052e5c89bb66798c905c17"
  *                       name: "John"
  *                       email: "teacher2@email.com"
  *                       password: "pass5678"
  *                       passwordConfirmed: "pass5678"
  *                       role: "teacher"
- *                       __v: 0
  *       401:
  *         $ref: '#/components/responses/401_Unauthorized'
  *       403:

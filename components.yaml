@@ -119,9 +119,26 @@ components:
             - teacher
             - user
             - sensor
-        __v:
-          type: integer
-          example: 0
+    UserResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 66052e5c89bb66798c905c16
+        name:
+          type: string
+          format: text
+          example: Rachel
+        email:
+          type: string
+          format: email
+          example: teacher1@email.com
+        role:
+          type: string
+          enum:
+            - teacher
+            - user
+            - sensor
     NewUser:
       type: object
       properties:
@@ -129,10 +146,6 @@ components:
           type: string
           format: email
           example: newUser@example.com
-        password:
-          type: string
-          format: password
-          example: pass1234
         role:
           type: string
           enum:
@@ -162,7 +175,7 @@ components:
                 type: string
                 example: 'Successful response with user object'
               user:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserResponse'
     400_InvalidRequest:
       description: Invalid Request, e.g., missing required fields or invalid data format
       content:

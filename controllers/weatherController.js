@@ -46,6 +46,49 @@ exports.getAllWeather = async (req, res) => {
 };
 
 /**
+ * GET /weather/id
+ *
+ * Get a single weather data by ID
+ *
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express request object
+ */
+exports.getWeather = async (req, res) => {
+  try {
+    const id = req.params.id.trim();
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Invalid ID format.',
+      });
+    }
+
+    const weather = await Weather.findById(id);
+
+    if (!weather) {
+      return res.status(404).json({
+        status: 404,
+        message: 'No matched ID with that weather data. ',
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        weather,
+      },
+    });
+  } catch (err) {
+    console.error('Error processing request:', err.message);
+    res.status(500).json({
+      status: 500,
+      message: 'Error processing request.',
+    });
+  }
+};
+
+/**
  * POST /weather
  *
  * Insert a new weather reading
@@ -118,7 +161,8 @@ exports.createManyWeather = async (req, res) => {
  *
  * Update a specific weather record by its id
  *
- * This function updates the weather record in the database based on the provided id. It expects the id of the record to be updated to be provided in the URL parameters (req.params.id), and the updated data to be provided in the request body (req.body).
+ * This function updates the weather record in the database based on the provided id. It expects the id of the
+ *  record to be updated to be provided in the URL parameters (req.params.id), and the updated data to be provided in the request body (req.body).
  *
  * @param {Object} req - The request object.
  * @param {Object} res - The response object.
@@ -331,7 +375,7 @@ exports.getMaxPrecipitation = async (req, res) => {
 
     if (maxPrecipitation.length === 0) {
       return res.status(404).json({
-        status: '404',
+        status: 404,
         message:
           'No precipitation record found for the specified sensor in the last five months',
       });
@@ -344,7 +388,7 @@ exports.getMaxPrecipitation = async (req, res) => {
   } catch (err) {
     res.status(500).json({
       status: 500,
-      message: 'Internal server error',
+      message: 'Error occurred while querying for maximum precipitation.',
     });
   }
 };
@@ -353,14 +397,13 @@ exports.getMaxPrecipitation = async (req, res) => {
  *
  * GET /max-temp/year
  *
- * Find the Max Temperature within the past  year, and return the sensor name,
- * reading date, and the max temperature
+ * Find the Max Temperature within the past year, and return the sensor name, reading date, and the max temperature
  *
  * @param {Object} req - An object containing request information.
  * @param {Object} res - The response object used to return the processing result.
  *
  * @returns {Promise} - Returns a Promise object representing the function's execution result.
- * @throws {Error} - Throws an exception if an error occurs.
+ *
  */
 
 exports.getMaxTemp = async (req, res) => {
@@ -403,7 +446,7 @@ exports.getMaxTemp = async (req, res) => {
           time: { $first: '$time' }, // Get the corresponding time of the max temperature
         },
       },
-      // Project the results to format them as required
+      // Project the results and format them as required
       {
         $project: {
           _id: 0,

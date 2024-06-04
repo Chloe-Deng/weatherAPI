@@ -96,7 +96,7 @@ const router = express.Router();
  *                   example: 500
  *                 message:
  *                   type: string
- *                   example: "Internal server error."
+ *                   example: "Error occurred while querying for maximum precipitation."
  */
 router
   .route('/max-precipitation/:sensorName')
@@ -781,6 +781,92 @@ router
 /**
  * @openapi
  * /api/v1/weather/{id}:
+ *   get:
+ *     summary: Get weather data by ID (Teacher and User only)
+ *     tags: [Weather Readings]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the weather data
+ *     responses:
+ *       200:
+ *         description: Weather data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     weather:
+ *                       $ref: '#/components/schemas/WeatherData'
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid ID format."
+ *       401:
+ *         description: Unauthorized access, token missing or invalid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: "You are not logged in! Please log in to get access."
+ *       403:
+ *         $ref: '#/components/responses/403_ForbiddenError'
+ *
+ *       404:
+ *         description: Weather data not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                 message:
+ *                   type: string
+ *             example:
+ *               status: 404
+ *               message: No matched ID with that weather data.
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                 message:
+ *                   type: string
+ *             example:
+ *               status: 500
+ *               message: Error processing request
+ *
  *   patch:
  *     summary: Update weather data by ID (Teacher only)
  *     tags: [Weather Readings]
@@ -937,6 +1023,11 @@ router
 
 router
   .route('/:id')
+  .get(
+    authController.protect,
+    authController.restrictTo('teacher', 'student'),
+    weatherController.getWeather
+  )
   .patch(
     authController.protect,
     authController.restrictTo('teacher'),

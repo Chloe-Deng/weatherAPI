@@ -8,7 +8,7 @@ exports.getAllWeather = async (req, res) => {
     // 遍历这个数组，如果req.query 这个对象中包含这些element的属性名，则删除这些el
     excludeFields.forEach((el) => delete queryObj[el]);
 
-    // 2) Advanced filtering
+    // 1) Advanced filtering
     let queryStr = JSON.stringify(queryObj);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
     let query = Weather.find(JSON.parse(queryStr));

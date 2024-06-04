@@ -9,7 +9,6 @@ const sendErrorDev = (err, res) => {
 
 // Global error handler
 module.exports = (err, req, res, next) => {
-  // console.log(err.stack)
   // 500: internal server error
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';

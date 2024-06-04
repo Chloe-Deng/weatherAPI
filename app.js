@@ -2,9 +2,9 @@ const express = require('express');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const docs = require('./utils/swagger');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const docs = require('./utils/swagger');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
@@ -39,6 +39,8 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
+
+// app.use(cors());
 // app.options('*', cors());
 // app.options('/api/v1/weather/:1d', cors())
 
