@@ -33,10 +33,12 @@ exports.createUser = async (req, res) => {
 
     newUser.password = undefined; // Do not send the password to user
 
+    const { __v, ...responseData } = newUser.toObject();
+
     res.status(201).json({
       status: 'success',
       data: {
-        user: newUser,
+        user: responseData,
       },
     });
   } catch (err) {

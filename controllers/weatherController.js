@@ -100,11 +100,14 @@ exports.createWeather = async (req, res) => {
   try {
     const newWeather = await Weather.create(req.body);
 
+    // Remove the __v field from the newWeather object
+    const { __v, ...responseData } = newWeather.toObject();
+
     res.status(201).json({
       statusCode: 201,
       status: 'success',
       message: 'Weather data successfully created',
-      data: newWeather,
+      data: responseData,
     });
   } catch (err) {
     if (err.name === 'ValidationError') {
@@ -134,11 +137,17 @@ exports.createManyWeather = async (req, res) => {
     const weatherData = req.body;
     const newWeather = await Weather.insertMany(weatherData);
 
+    // Remove the __v field from each document in the newWeather array
+    const responseData = newWeather.map((weather) => {
+      const { __v, ...weatherDataWithoutV } = weather.toObject();
+      return weatherDataWithoutV;
+    });
+
     res.status(201).json({
       status: 'success',
       records: weatherData.length,
       data: {
-        weather: newWeather,
+        weather: responseData,
       },
     });
   } catch (err) {

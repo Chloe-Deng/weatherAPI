@@ -57,20 +57,20 @@ exports.signup = async (req, res) => {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'Validation error: ' + messages.join('. '),
       });
     }
 
     if (err.code === 11000) {
       return res.status(400).json({
-        status: 'fail',
+        status: 400,
         message: 'User email already existed.',
       });
     }
 
     res.status(500).json({
-      status: 'fail',
+      status: 500,
       message: 'An error occurred: ' + err.message,
     });
   }

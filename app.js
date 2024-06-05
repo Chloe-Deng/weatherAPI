@@ -35,7 +35,7 @@ app.use('/api', limiter);
 // Implement CORS
 const corsOptions = {
   origin: ['https://www.google.com', 'https://www.wikipedia.org'],
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
